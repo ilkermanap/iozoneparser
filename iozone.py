@@ -5,16 +5,12 @@ class IozoneTest:
         self.name = testname
         self.results = {}
 
-    def add_result(self, result):
-        if result.test == self.name:
-            self.results = 1
-
-class IozoneRecord:
-    def __init__(self, testname, kb, reclen, num):
-        self.test = testname
-        self.kb = kb
-        self.reclen = reclen
-        self.numbytes = 1024 * num
+    def add_result(self, kb, reclen, num):
+        if not kb in self.results.keys():
+            self.results[kb] = {reclen:num}
+        else:
+            self.results[kb][reclen] = num
+        #self.results[(kb, reclen)] = num
 
 def split_with_location(line, separator=None):
     temp = {}
@@ -39,7 +35,7 @@ def two_line_headers(line1,line2):
     for loc2 in sorted(dn.keys()):
         for loc1 in sorted(up.keys()):
             if overlap(loc2, loc2 + len(dn[loc2]), loc1, loc1 + len(up[loc1])):
-                newdn[loc2] =  up[loc1] +" "+  dn[lo1c2]
+                newdn[loc2] =  up[loc1] +" "+  dn[loc2]
                 break
     return newdn
 
@@ -58,33 +54,47 @@ class Iozone:
         self.directio = None
         self.cmdline = None
         self.output_term = None
-        self.tests = None
-        self.findTests()
+        self.tests = {}
+        lastpos, x =  self.findTests()
+        i = 2
+        for k, v in sorted(x.items())[2:]:
+            self.tests[i] = IozoneTest(v)
+            i += 1
+        self.parse(lastpos)
+        for k,v in self.tests.items():
+            print k,v.name
+            for kk, vv in v.results.items():
+                print v.name, kk, sorted(vv)
+        
 
     def findTests(self):
         oldline = self.content[0][:-1]
+        i = 1
         for line in self.content[1:]:
             newline = line[:-1]
             if newline.strip().startswith("kB  reclen"):
-                print oldline
-                print newline
                 if oldline.strip().startswith("File stride"):
                     # no two line test name
                     return newline.strip().split()[2:]
                 else:
-                    # we have two line test names, find a way to add 
-                    # first parts from the oldline
-                    headers = two_line_headers(oldline, newline)
-                    for k,v in sorted(headers.items()):
-                        print k,v
-                    names = newline.strip().split()[2:]
-                break
+                    return  (i+1, two_line_headers(oldline, newline))
             else:
                 oldline=newline
+            i+=1
 
-    def parse(self):
-        pass
-
+    def parse(self, lastpos):
+        for pos in range(lastpos, len(self.content)):
+            line = self.content[pos].strip()
+            if len(line.strip()) == 0:
+                break
+            t = line.split()
+            kb = int(t[0])
+            reclen = int(t[1])
+            i = 2
+            for n in t[2:]:
+                self.tests[i].add_result(kb, reclen, n)
+                i += 1
+                
 
 if __name__ == "__main__":
    f = Iozone("sample.txt")
