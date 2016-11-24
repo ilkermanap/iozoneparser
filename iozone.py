@@ -1,4 +1,4 @@
-
+import glob
 
 class IozoneTest:
     def __init__(self, testname):
@@ -61,10 +61,10 @@ class Iozone:
             self.tests[i] = IozoneTest(v)
             i += 1
         self.parse(lastpos)
-        for k,v in self.tests.items():
-            print k,v.name
-            for kk, vv in v.results.items():
-                print v.name, kk, sorted(vv)
+        #for k,v in self.tests.items():
+        #    print k,v.name
+        #    for kk, vv in v.results.items():
+        #        print v.name, kk, sorted(vv)
         
 
     def findTests(self):
@@ -96,5 +96,29 @@ class Iozone:
                 i += 1
                 
 
+class IozoneTestGroup:
+    def __init__(self, description, directory):
+        self.description = description
+        self.directory = directory
+        self.tests = {}
+        for fname in glob.glob("%s/*" % self.directory):
+            self.tests[fname] = Iozone(fname)
+
+        self.average = {}
+        self.maximum = {}
+        self.minimum = {}
+        
+        tests = [test.name for test in self.tests.values()[0].tests.values()]
+        temp = {}
+        for test in tests:
+            for testitem in [k for k in self.tests.values()]:
+                for testname in [k for k in testitem.tests.values()]:
+                    for kb in [ k for k in testname.results.keys()]:
+                        for reclen in [rec for rec in testname.results[kb].keys()]:
+                            print testitem.fname, testname.name, kb, reclen, testname.results[kb][reclen]
+
+
 if __name__ == "__main__":
-   f = Iozone("sample.txt")
+    esoslocal = IozoneTestGroup("Esos local disk test", "esos-local")
+    esosremote = IozoneTestGroup("Esos remote disk test", "esos-remote")
+    #f = Iozone("sample.txt")
